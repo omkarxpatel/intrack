@@ -82,8 +82,9 @@ export default function TermsPage() {
         <section>
           <h2>Ending it</h2>
           <p>
-            Stop using Intrack whenever you like, and ask us to delete your account when you do.
-            We may suspend or remove accounts that break these terms or put the service at risk.
+            Stop using Intrack whenever you like, and delete your account from Settings when you
+            do. We may suspend or remove accounts that break these terms or put the service at
+            risk.
           </p>
         </section>
 

@@ -97,9 +97,13 @@ export default function PrivacyPage() {
           <h2>Keeping and deleting your data</h2>
           <p>
             Your data stays until you remove it. You can edit or delete any application at any
-            time inside the app. To delete your account and everything attached to it, message us
-            on Discord and it will be removed. Database backups may hold copies for a short
-            period before they rotate out.
+            time inside the app, and{" "}
+            <Link href="/account/settings" className="font-medium text-foreground underline">
+              Settings
+            </Link>{" "}
+            has a Delete account button that removes your account along with every application,
+            status history, and saved role — immediately, without asking us. Database backups may
+            hold copies for a short period before they rotate out.
           </p>
         </section>
 
@@ -130,8 +134,9 @@ export default function PrivacyPage() {
         <section>
           <h2>Contact</h2>
           <p>
-            Questions about this policy, or a deletion request: DM{" "}
-            <span className="font-medium text-foreground">@anomier</span> on Discord.
+            Questions about this policy: DM{" "}
+            <span className="font-medium text-foreground">@anomier</span> on Discord. You don&apos;t
+            need to ask us to delete anything — Settings does it.
           </p>
         </section>
       </div>
