@@ -33,7 +33,7 @@ export default async function InsightsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
-            <Link href="/">
+            <Link href="/applications">
               <ArrowLeft className="size-4" /> Applications
             </Link>
           </Button>

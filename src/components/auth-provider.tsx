@@ -23,7 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       onSessionChange={() => router.refresh()}
       Link={Link}
       basePath="/auth"
-      redirectTo="/"
+      // Has to be a proxy-covered route, not just the nicest landing spot:
+      // Neon appends the OAuth verifier to this URL and src/proxy.ts is what
+      // exchanges it for a session cookie. "/" is public, so it would drop it.
+      redirectTo="/applications"
       social={{ providers: ["google"] }}
       credentials={{ forgotPassword: true }}
     >

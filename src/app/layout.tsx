@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/components/auth-provider";
@@ -34,8 +35,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             {children}
             {/* main carries flex-1, so this stays pinned to the bottom on short pages. */}
             <footer className="border-t py-4 text-center text-xs text-muted-foreground">
-              Found a bug or want a feature? DM{" "}
-              <span className="font-medium text-foreground">@anomier</span> on Discord.
+              <p>
+                Found a bug or want a feature? DM{" "}
+                <span className="font-medium text-foreground">@anomier</span> on Discord.
+              </p>
+              <div className="mt-1.5 flex justify-center gap-4">
+                <Link href="/privacy" className="hover:text-foreground">
+                  Privacy
+                </Link>
+                <Link href="/terms" className="hover:text-foreground">
+                  Terms
+                </Link>
+              </div>
             </footer>
             <Toaster richColors position="top-center" />
           </AuthProvider>

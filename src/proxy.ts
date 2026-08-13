@@ -15,6 +15,12 @@ import { neonAuth } from "@/lib/neon-auth";
  */
 export default neonAuth.middleware({ loginUrl: "/auth/sign-in" });
 
+/**
+ * `.+` rather than `.*` leaves out the home page, and the lookahead leaves out
+ * the legal pages: this middleware redirects anything it covers to sign-in, so
+ * the public routes have to sit outside it. Everything else stays covered by
+ * default — a new route is protected unless it's deliberately excluded here.
+ */
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|icon.svg).*)"],
+  matcher: ["/((?!privacy|terms|_next/static|_next/image|icon.svg).+)"],
 };

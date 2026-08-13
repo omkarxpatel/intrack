@@ -91,6 +91,21 @@ export async function getStatusPaths(): Promise<Record<string, StatusStep[]>> {
   return paths;
 }
 
+/**
+ * Which providers the current user can sign in with. Neon Auth keeps its tables
+ * in the same database, so this is a plain read rather than a client-side
+ * round-trip through the auth API — and it means the settings page renders the
+ * real state on first paint instead of flashing a loading row.
+ */
+export async function listSignInMethods() {
+  const db = getDb();
+  const userId = await getCurrentUserId();
+  const result = await db.execute<{ providerId: string; accountId: string }>(
+    sql`select "providerId", "accountId" from neon_auth.account where "userId" = ${userId}`,
+  );
+  return result.rows;
+}
+
 /** Saved role names for the form's dropdown. */
 export async function listRolePresets() {
   const db = getDb();

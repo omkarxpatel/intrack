@@ -18,7 +18,7 @@ export default async function ImportPage() {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
       <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
-        <Link href="/">
+        <Link href="/applications">
           <ArrowLeft className="size-4" /> Back to applications
         </Link>
       </Button>

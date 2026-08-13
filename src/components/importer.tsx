@@ -303,7 +303,7 @@ export function Importer() {
 
           {imported ? (
             <Button asChild>
-              <Link href="/">View applications</Link>
+              <Link href="/applications">View applications</Link>
             </Button>
           ) : (
             <Button onClick={() => run(false)} disabled={pending || report.created === 0}>
