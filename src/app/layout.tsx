@@ -29,6 +29,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
+          {/* main carries flex-1, so this stays pinned to the bottom on short pages. */}
+          <footer className="border-t py-4 text-center text-xs text-muted-foreground">
+            Found a bug or want a feature? DM <span className="font-medium text-foreground">@anomier</span> on
+            Discord.
+          </footer>
           <Toaster richColors position="top-center" />
         </ThemeProvider>
       </body>
