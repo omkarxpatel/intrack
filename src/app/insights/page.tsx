@@ -37,7 +37,7 @@ export default async function InsightsPage() {
               <ArrowLeft className="size-4" /> Applications
             </Link>
           </Button>
-          <UserButton />
+          <UserButton size="icon" />
         </div>
       </header>
 

@@ -62,7 +62,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               <Upload className="size-4" /> Import
             </Link>
           </Button>
-          <UserButton />
+          <UserButton size="icon" />
         </div>
       </header>
 
