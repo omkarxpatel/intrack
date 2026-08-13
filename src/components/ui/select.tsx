@@ -60,8 +60,10 @@ function SelectTrigger({
 function SelectContent({
   className,
   children,
-  position = "item-aligned",
-  align = "center",
+  // "item-aligned" (shadcn's default) fails to anchor and renders the menu at
+  // the viewport's top-left corner. Popper positioning anchors to the trigger.
+  position = "popper",
+  align = "start",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   return (

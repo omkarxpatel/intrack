@@ -46,17 +46,29 @@ with no login. Publishing means replacing that one function with a real session
 lookup — no schema migration, no query rewrites. Retrofitting multi-tenancy
 later is the expensive version of this.
 
-**`status_events` is an append-only log.** Status changes are written there in
-addition to updating `applications.status`, so a timeline and "days since last
-movement" are available without backfilling history that was never recorded.
+**`status_events` records the path, and the path is editable.** Every status
+change is written there as well as onto `applications.status`, so each row shows
+the journey it took (`Applied → OA → Interview 2`) rather than just where it
+landed. "Edit status path" in the row menu adds, retimes, and removes steps —
+an import guessing wrong shouldn't leave you stuck with a history you can't
+correct. Steps order by timestamp, and `applications.status` is kept in sync
+with the latest step so the badge and the trail can never disagree.
 
 ## Importing
 
-`/import` takes CSV, TSV, or a JSON array. It guesses the column mapping from
-your headers, normalizes messy values (`Interview - Round 2` → Interview,
-`01/15/2026` and `Feb 3 2026` → `2026-01-15` / `2026-02-03`), then shows a full
-dry-run preview — what will import, what's a duplicate, what's broken — before
-writing anything. Duplicates are matched on company + role + term.
+`/import` takes CSV, TSV, or a JSON array — including a wrapped API response
+like `{ "success": true, "data": [...] }`, so a payload copied straight out of
+the network tab works. It guesses the column mapping from your headers,
+normalizes messy values (`Interview - Round 2` → Interview, `01/15/2026` and
+`Feb 3 2026` → `2026-01-15` / `2026-02-03`, `Summer 2027` → Summer), then shows
+a full dry-run preview — what will import, what's a duplicate, what's broken —
+before writing anything.
+
+Duplicate detection prefers a stable id from the source: if a row carries an
+external id, only that id decides. Rows without one fall back to matching on
+company + role + term. Two applications to the same role in the same term are
+genuinely distinct records if the source says they are, and collapsing them
+would silently drop data.
 
 This is provider-agnostic on purpose: it's the permanent path for Tracktern
 today and anything else later.

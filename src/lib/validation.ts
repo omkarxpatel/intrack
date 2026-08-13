@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { APPLICATION_STATUSES, WORK_MODES } from "@/lib/constants";
+import { APPLICATION_STATUSES, TERMS, WORK_MODES } from "@/lib/constants";
 
 const emptyToNull = (v: unknown) =>
   typeof v === "string" && v.trim() === "" ? null : v;
@@ -33,10 +33,9 @@ export const applicationInputSchema = z.object({
   company: requiredText(200, "Company is required"),
   role: requiredText(200, "Role is required"),
   jobUrl: optionalUrl,
-  location: optionalText(200),
   workMode: z.enum(WORK_MODES).default("unknown"),
-  term: optionalText(100),
-  status: z.enum(APPLICATION_STATUSES).default("saved"),
+  term: z.preprocess(emptyToNull, z.enum(TERMS).nullable().default(null)),
+  status: z.enum(APPLICATION_STATUSES).default("upcoming"),
   appliedAt: optionalIsoDate,
   salary: optionalText(100),
   source: optionalText(200),

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { applications, statusEvents } from "@/db/schema";
+import { applications, rolePresets, statusEvents } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/auth";
 import { applicationInputSchema } from "@/lib/validation";
 import { dedupeKey, type MappedRow } from "@/lib/import-mapping";
@@ -93,8 +93,12 @@ export async function importApplications(
 
     const data = parsed.data;
     const key = dedupeKey(data.company, data.role, data.term);
-    const isDuplicate =
-      (data.externalId && seenExternalIds.has(data.externalId)) || seenKeys.has(key);
+    // A stable id from the source is authoritative: if the export says these
+    // are two records, import two. Only fall back to the company+role+term
+    // heuristic for rows that arrive without an id, where it's all we have.
+    const isDuplicate = data.externalId
+      ? seenExternalIds.has(data.externalId)
+      : seenKeys.has(key);
 
     if (isDuplicate && options.skipDuplicates) {
       results.push({
@@ -124,16 +128,26 @@ export async function importApplications(
         .values(chunk)
         .returning({ id: applications.id, status: applications.status });
 
-      await db.insert(statusEvents).values(
-        inserted.map((r) => ({
+      // "Applied" is the baseline, not a path step — see PATH_STATUSES.
+      const steps = inserted
+        .filter((r) => r.status !== "applied")
+        .map((r) => ({
           applicationId: r.id,
           userId,
           fromStatus: null,
           toStatus: r.status,
           note: "Imported",
-        })),
-      );
+        }));
+      if (steps.length > 0) await db.insert(statusEvents).values(steps);
     }
+
+    // Imported roles become presets, so the dropdown is useful immediately.
+    const roles = [...new Set(toInsert.map((r) => r.role))];
+    await db
+      .insert(rolePresets)
+      .values(roles.map((role) => ({ userId, role })))
+      .onConflictDoNothing();
+
     revalidatePath("/");
   }
 

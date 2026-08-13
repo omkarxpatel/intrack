@@ -1,31 +1,52 @@
 // Kept free of any server-only imports so client components can use these
 // without dragging the Drizzle schema (and pg-core) into the browser bundle.
 
+// Ordered by how far along the process they are, so dropdowns read as a funnel.
 export const APPLICATION_STATUSES = [
-  "saved",
+  "upcoming",
   "applied",
   "online_assessment",
-  "interview",
-  "offer",
-  "rejected",
-  "ghosted",
+  "interview_stage_1",
+  "interview_stage_2",
+  "interview_stage_3",
+  "interview_stage_4",
+  "interview_stage_5",
+  "interview_final",
+  "offered",
+  "accepted",
   "withdrawn",
+  "rejected",
 ] as const;
 
 export const WORK_MODES = ["unknown", "onsite", "hybrid", "remote"] as const;
 
+export const TERMS = ["spring", "summer", "fall", "winter"] as const;
+
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 export type WorkMode = (typeof WORK_MODES)[number];
+export type Term = (typeof TERMS)[number];
+
+export const TERM_LABELS: Record<Term, string> = {
+  spring: "Spring",
+  summer: "Summer",
+  fall: "Fall",
+  winter: "Winter",
+};
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  saved: "Saved",
+  upcoming: "Upcoming",
   applied: "Applied",
   online_assessment: "OA",
-  interview: "Interview",
-  offer: "Offer",
-  rejected: "Rejected",
-  ghosted: "Ghosted",
+  interview_stage_1: "Interview 1",
+  interview_stage_2: "Interview 2",
+  interview_stage_3: "Interview 3",
+  interview_stage_4: "Interview 4",
+  interview_stage_5: "Interview 5",
+  interview_final: "Final",
+  offered: "Offered",
+  accepted: "Accepted",
   withdrawn: "Withdrawn",
+  rejected: "Rejected",
 };
 
 export const WORK_MODE_LABELS: Record<WorkMode, string> = {
@@ -35,18 +56,59 @@ export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   remote: "Remote",
 };
 
-// Hue carries meaning: neutral = not yet acted on, blue/violet = in flight,
-// amber = active conversation, green = won, red = lost, muted = closed out.
+/**
+ * Monochrome by design: weight, not hue, encodes progress. Dormant statuses sit
+ * in a grey outline, anything in flight gets a full-contrast outline, a win is
+ * filled solid, and only a rejection is allowed colour. Written against theme
+ * tokens rather than fixed palette steps so light and dark both follow.
+ */
+const DORMANT = "border border-muted-foreground/40 text-muted-foreground";
+const IN_FLIGHT = "border border-foreground/70 text-foreground";
+const STRONG = "border border-foreground text-foreground font-semibold";
+const WON = "border border-foreground bg-foreground text-background font-semibold";
+const LOST = "border border-destructive text-destructive";
+
 export const STATUS_STYLES: Record<ApplicationStatus, string> = {
-  saved: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  applied: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  online_assessment: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300",
-  interview: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300",
-  offer: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-  ghosted: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  withdrawn: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  upcoming: DORMANT,
+  applied: DORMANT,
+  online_assessment: IN_FLIGHT,
+  interview_stage_1: IN_FLIGHT,
+  interview_stage_2: IN_FLIGHT,
+  interview_stage_3: IN_FLIGHT,
+  interview_stage_4: IN_FLIGHT,
+  interview_stage_5: IN_FLIGHT,
+  interview_final: STRONG,
+  offered: STRONG,
+  accepted: WON,
+  withdrawn: DORMANT,
+  rejected: LOST,
 };
 
 /** Statuses that mean the application is no longer moving. */
-export const CLOSED_STATUSES: ApplicationStatus[] = ["rejected", "ghosted", "withdrawn"];
+export const CLOSED_STATUSES: ApplicationStatus[] = ["rejected", "withdrawn"];
+
+/**
+ * "Applied" is the baseline every tracked application shares, so it carries no
+ * information as a path step — the date lives on `applied_at` instead. The path
+ * only records what happened *after* applying.
+ */
+export const PATH_STATUSES = APPLICATION_STATUSES.filter((s) => s !== "applied");
+
+/** Anything between "applied" and a decision — the active pipeline. */
+export const IN_PROCESS_STATUSES: ApplicationStatus[] = [
+  "online_assessment",
+  "interview_stage_1",
+  "interview_stage_2",
+  "interview_stage_3",
+  "interview_stage_4",
+  "interview_stage_5",
+  "interview_final",
+];
+
+/** One hop in an application's status path. Ordered by `at`, and user-editable. */
+export type StatusStep = {
+  id: string;
+  status: ApplicationStatus;
+  at: Date;
+  note: string | null;
+};

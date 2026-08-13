@@ -1,18 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ExternalLink, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ChevronRight, ExternalLink, History, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { deleteApplication, setStatus } from "@/lib/actions";
 import {
   APPLICATION_STATUSES,
   CLOSED_STATUSES,
   STATUS_LABELS,
-  WORK_MODE_LABELS,
+  TERM_LABELS,
+  type ApplicationStatus,
+  type StatusStep,
 } from "@/lib/constants";
 import type { Application } from "@/db/schema";
 import { StatusBadge } from "@/components/status-badge";
 import { ApplicationFormDialog } from "@/components/application-form-dialog";
+import { StatusPathDialog } from "@/components/status-path-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,12 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -36,11 +34,32 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export function ApplicationsTable({ applications }: { applications: Application[] }) {
+export function ApplicationsTable({
+  applications,
+  rolePresets,
+  statusPaths,
+  searching = false,
+}: {
+  applications: Application[];
+  rolePresets: string[];
+  statusPaths: Record<string, StatusStep[]>;
+  searching?: boolean;
+}) {
   const [pending, startTransition] = useTransition();
+
+  // The database is a cross-country round-trip away, so waiting for the server
+  // before repainting the chip costs a few hundred ms of dead time on the most
+  // frequent action in the app. Paint immediately; React reverts automatically
+  // if the action fails.
+  const [rows, applyOptimisticStatus] = useOptimistic(
+    applications,
+    (current, { id, status }: { id: string; status: ApplicationStatus }) =>
+      current.map((a) => (a.id === id ? { ...a, status } : a)),
+  );
 
   function onStatusChange(id: string, status: string) {
     startTransition(async () => {
+      applyOptimisticStatus({ id, status: status as ApplicationStatus });
       const result = await setStatus(id, status);
       if (!result.ok) toast.error(result.error);
     });
@@ -55,12 +74,14 @@ export function ApplicationsTable({ applications }: { applications: Application[
     });
   }
 
-  if (applications.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-dashed py-16 text-center">
-        <p className="text-sm font-medium">No applications yet</p>
+        <p className="text-sm font-medium">{searching ? "No matches" : "No applications yet"}</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add one manually, or import a CSV to bring over what you already have.
+          {searching
+            ? "Try a shorter search, or clear it to see everything."
+            : "Add one manually, or import a CSV to bring over what you already have."}
         </p>
       </div>
     );
@@ -76,14 +97,16 @@ export function ApplicationsTable({ applications }: { applications: Application[
             <TableHead>Status</TableHead>
             <TableHead>Applied</TableHead>
             <TableHead>Term</TableHead>
-            <TableHead>Location</TableHead>
             <TableHead className="text-right">Last update</TableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {applications.map((app) => (
-            <TableRow key={app.id} className={CLOSED_STATUSES.includes(app.status) ? "opacity-60" : undefined}>
+          {rows.map((app) => (
+            <TableRow
+              key={app.id}
+              className={CLOSED_STATUSES.includes(app.status) ? "opacity-60" : undefined}
+            >
               <TableCell className="font-medium">
                 {app.jobUrl ? (
                   <a
@@ -106,7 +129,9 @@ export function ApplicationsTable({ applications }: { applications: Application[
                 <Select value={app.status} onValueChange={(v) => onStatusChange(app.id, v)}>
                   <SelectTrigger
                     aria-label={`Status for ${app.company}`}
-                    className="h-auto w-auto gap-1 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 [&>svg]:size-3 [&>svg]:opacity-40"
+                    // dark:bg-transparent is required: SelectTrigger ships a
+                    // dark:bg-input/30 that plain bg-transparent won't override.
+                    className="h-auto w-auto gap-1 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent [&>svg]:size-3 [&>svg]:opacity-40"
                   >
                     <StatusBadge status={app.status} />
                   </SelectTrigger>
@@ -118,21 +143,24 @@ export function ApplicationsTable({ applications }: { applications: Application[
                     ))}
                   </SelectContent>
                 </Select>
+                <StatusPath steps={statusPaths[app.id] ?? []} />
               </TableCell>
               <TableCell className="tabular-nums text-muted-foreground">
                 {app.appliedAt ?? "—"}
               </TableCell>
-              <TableCell className="text-muted-foreground">{app.term ?? "—"}</TableCell>
               <TableCell className="text-muted-foreground">
-                {[app.location, app.workMode !== "unknown" ? WORK_MODE_LABELS[app.workMode] : null]
-                  .filter(Boolean)
-                  .join(" · ") || "—"}
+                {app.term ? TERM_LABELS[app.term] : "—"}
               </TableCell>
               <TableCell className="text-right text-muted-foreground whitespace-nowrap">
                 {relativeDays(app.updatedAt)}
               </TableCell>
               <TableCell>
-                <RowActions app={app} onDelete={onDelete} />
+                <RowActions
+                  app={app}
+                  rolePresets={rolePresets}
+                  steps={statusPaths[app.id] ?? []}
+                  onDelete={onDelete}
+                />
               </TableCell>
             </TableRow>
           ))}
@@ -143,18 +171,42 @@ export function ApplicationsTable({ applications }: { applications: Application[
 }
 
 /**
- * The edit dialog is a sibling of the menu, not a child of it. Nesting a Radix
- * Dialog inside DropdownMenuContent leaves `pointer-events: none` on <body>
- * after the dialog closes, which freezes the whole page until a reload.
+ * The journey, not just the endpoint — a row sitting at Rejected still shows
+ * that it got to OA and Interview first. Hidden for single-step paths, where
+ * the badge already says everything.
  */
+function StatusPath({ steps }: { steps: StatusStep[] }) {
+  if (steps.length < 2) return null;
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-0.5 text-[10px] leading-tight text-muted-foreground">
+      {steps.map((step, i) => (
+        <Fragment key={i}>
+          {i > 0 && <ChevronRight className="size-2.5 shrink-0 opacity-60" />}
+          <span className={i === steps.length - 1 ? "font-medium text-foreground/70" : undefined}>
+            {STATUS_LABELS[step.status]}
+          </span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
 function RowActions({
   app,
+  rolePresets,
+  steps,
   onDelete,
 }: {
   app: Application;
+  rolePresets: string[];
+  steps: StatusStep[];
   onDelete: (app: Application) => void;
 }) {
+  // Both dialogs are siblings of the menu, not children of it. Nesting a Radix
+  // Dialog inside DropdownMenuContent leaves `pointer-events: none` on <body>
+  // after the dialog closes, which freezes the whole page until a reload.
   const [editOpen, setEditOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
     <>
@@ -167,6 +219,9 @@ function RowActions({
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>
             <Pencil className="size-4" /> Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
+            <History className="size-4" /> Edit status path
           </DropdownMenuItem>
           {app.jobUrl && (
             <DropdownMenuItem asChild>
@@ -182,7 +237,21 @@ function RowActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ApplicationFormDialog application={app} open={editOpen} onOpenChange={setEditOpen} />
+      {/* Mounted only once opened. Rendering both dialogs for all 89 rows builds
+          a large element tree on every render, which made even an optimistic
+          status change take hundreds of milliseconds to repaint. */}
+      {editOpen && (
+        <ApplicationFormDialog
+          application={app}
+          rolePresets={rolePresets}
+          open
+          onOpenChange={setEditOpen}
+        />
+      )}
+
+      {historyOpen && (
+        <StatusPathDialog app={app} steps={steps} open onOpenChange={setHistoryOpen} />
+      )}
     </>
   );
 }

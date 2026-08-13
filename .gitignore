@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Personal application exports (contains real application data)
+dump.json
+tracktern-import.json

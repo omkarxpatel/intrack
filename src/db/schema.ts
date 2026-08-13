@@ -10,12 +10,13 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 // Relative rather than the "@/" alias so drizzle-kit's loader resolves it too.
-import { APPLICATION_STATUSES, WORK_MODES } from "../lib/constants";
+import { APPLICATION_STATUSES, TERMS, WORK_MODES } from "../lib/constants";
 
-export { APPLICATION_STATUSES, WORK_MODES };
+export { APPLICATION_STATUSES, TERMS, WORK_MODES };
 
 export const applicationStatus = pgEnum("application_status", APPLICATION_STATUSES);
 export const workMode = pgEnum("work_mode", WORK_MODES);
+export const termSeason = pgEnum("term_season", TERMS);
 
 export const applications = pgTable(
   "applications",
@@ -28,11 +29,9 @@ export const applications = pgTable(
     company: text("company").notNull(),
     role: text("role").notNull(),
     jobUrl: text("job_url"),
-    location: text("location"),
     workMode: workMode("work_mode").notNull().default("unknown"),
-    // Free text so "Summer 2027", "Fall 2026 co-op", etc. all fit.
-    term: text("term"),
-    status: applicationStatus("status").notNull().default("saved"),
+    term: termSeason("term"),
+    status: applicationStatus("status").notNull().default("upcoming"),
     appliedAt: date("applied_at"),
     salary: text("salary"),
     source: text("source"),
@@ -71,6 +70,19 @@ export const statusEvents = pgTable(
   (t) => [index("status_events_application_idx").on(t.applicationId, t.occurredAt)],
 );
 
+// Saved role names for the form's dropdown. Kept separate from applications so
+// a preset survives deleting every application that used it.
+export const rolePresets = pgTable(
+  "role_presets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    role: text("role").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("role_presets_user_role_idx").on(t.userId, t.role)],
+);
+
 export const applicationsRelations = relations(applications, ({ many }) => ({
   statusEvents: many(statusEvents),
 }));
@@ -85,3 +97,4 @@ export const statusEventsRelations = relations(statusEvents, ({ one }) => ({
 export type Application = typeof applications.$inferSelect;
 export type NewApplication = typeof applications.$inferInsert;
 export type StatusEvent = typeof statusEvents.$inferSelect;
+export type RolePreset = typeof rolePresets.$inferSelect;

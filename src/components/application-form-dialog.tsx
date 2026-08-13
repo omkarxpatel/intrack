@@ -6,10 +6,13 @@ import { createApplication, updateApplication } from "@/lib/actions";
 import {
   APPLICATION_STATUSES,
   STATUS_LABELS,
+  TERMS,
+  TERM_LABELS,
   WORK_MODES,
   WORK_MODE_LABELS,
 } from "@/lib/constants";
 import type { Application } from "@/db/schema";
+import { RoleCombobox } from "@/components/role-combobox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,7 +38,6 @@ type FormValues = Record<
   | "company"
   | "role"
   | "jobUrl"
-  | "location"
   | "workMode"
   | "term"
   | "status"
@@ -46,26 +48,35 @@ type FormValues = Record<
   string
 >;
 
-const EMPTY: FormValues = {
+// Radix Select can't hold an empty string as a value, so "no term" needs a sentinel.
+const NO_TERM = "__none__";
+
+function todayIso() {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+// A function, not a constant: evaluated when the dialog opens, so a tab left
+// open overnight still defaults to the actual current date.
+const emptyValues = (): FormValues => ({
   company: "",
   role: "",
   jobUrl: "",
-  location: "",
   workMode: "unknown",
   term: "",
-  status: "saved",
-  appliedAt: "",
+  status: "applied",
+  appliedAt: todayIso(),
   salary: "",
   source: "",
   notes: "",
-};
+});
 
 function toFormValues(a: Application): FormValues {
   return {
     company: a.company,
     role: a.role,
     jobUrl: a.jobUrl ?? "",
-    location: a.location ?? "",
     workMode: a.workMode,
     term: a.term ?? "",
     status: a.status,
@@ -85,11 +96,13 @@ function toFormValues(a: Application): FormValues {
 export function ApplicationFormDialog({
   application,
   trigger,
+  rolePresets,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: {
   application?: Application;
   trigger?: ReactNode;
+  rolePresets: string[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -100,7 +113,7 @@ export function ApplicationFormDialog({
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = setControlledOpen ?? setUncontrolledOpen;
   const [values, setValues] = useState<FormValues>(
-    application ? toFormValues(application) : EMPTY,
+    application ? toFormValues(application) : emptyValues(),
   );
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [pending, startTransition] = useTransition();
@@ -113,7 +126,7 @@ export function ApplicationFormDialog({
     if (next) {
       // Reset to the source of truth each time it opens so a cancelled edit
       // doesn't leak into the next one.
-      setValues(application ? toFormValues(application) : EMPTY);
+      setValues(application ? toFormValues(application) : emptyValues());
       setErrors({});
     }
   }
@@ -159,11 +172,11 @@ export function ApplicationFormDialog({
             </Field>
 
             <Field id={`${formId}-role`} label="Role" error={errors.role} required>
-              <Input
+              <RoleCombobox
                 id={`${formId}-role`}
                 value={values.role}
-                onChange={(e) => set("role", e.target.value)}
-                placeholder="Software Engineer Intern"
+                onChange={(role) => set("role", role)}
+                presets={rolePresets}
               />
             </Field>
 
@@ -206,12 +219,22 @@ export function ApplicationFormDialog({
             </Field>
 
             <Field id={`${formId}-term`} label="Term" error={errors.term}>
-              <Input
-                id={`${formId}-term`}
-                value={values.term}
-                onChange={(e) => set("term", e.target.value)}
-                placeholder="Summer 2027"
-              />
+              <Select
+                value={values.term || NO_TERM}
+                onValueChange={(v) => set("term", v === NO_TERM ? "" : v)}
+              >
+                <SelectTrigger id={`${formId}-term`} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_TERM}>Not specified</SelectItem>
+                  {TERMS.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TERM_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
 
             <Field id={`${formId}-workMode`} label="Work mode" error={errors.workMode}>
@@ -227,15 +250,6 @@ export function ApplicationFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </Field>
-
-            <Field id={`${formId}-location`} label="Location" error={errors.location}>
-              <Input
-                id={`${formId}-location`}
-                value={values.location}
-                onChange={(e) => set("location", e.target.value)}
-                placeholder="Boston, MA"
-              />
             </Field>
 
             <Field id={`${formId}-salary`} label="Compensation" error={errors.salary}>

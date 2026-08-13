@@ -2,13 +2,19 @@
 // Deliberately forgiving: the UI always shows a preview before anything is
 // written, so guessing wrong is cheap and correctable.
 
-import { APPLICATION_STATUSES, WORK_MODES, type ApplicationStatus, type WorkMode } from "@/lib/constants";
+import {
+  APPLICATION_STATUSES,
+  TERMS,
+  WORK_MODES,
+  type ApplicationStatus,
+  type Term,
+  type WorkMode,
+} from "@/lib/constants";
 
 export const IMPORT_FIELDS = [
   "company",
   "role",
   "jobUrl",
-  "location",
   "workMode",
   "term",
   "status",
@@ -25,7 +31,6 @@ export const IMPORT_FIELD_LABELS: Record<ImportField, string> = {
   company: "Company",
   role: "Role",
   jobUrl: "Job listing URL",
-  location: "Location",
   workMode: "Work mode",
   term: "Term",
   status: "Status",
@@ -49,7 +54,6 @@ const HEADER_ALIASES: Record<ImportField, string[]> = {
   appliedAt: ["dateapplied", "applieddate", "appliedon", "applicationdate", "applied", "datesubmitted", "submitted", "date"],
   status: ["status", "stage", "state", "progress", "applicationstatus"],
   term: ["term", "season", "semester", "cycle", "period", "timeperiod", "startdate", "duration"],
-  location: ["location", "city", "place", "office", "where"],
   workMode: ["workmode", "worktype", "arrangement", "remote", "onsite", "modality", "locationtype"],
   salary: ["salary", "pay", "payrate", "compensation", "comp", "rate", "hourly", "wage"],
   source: ["source", "via", "platform", "jobboard", "board", "foundvia", "referral"],
@@ -87,48 +91,81 @@ export function guessMapping(headers: string[]): Record<string, ImportField | nu
   return mapping;
 }
 
+// Insertion order matters: normalizeStatus falls back to a substring match, so
+// the specific round-numbered keys must come before the bare "interview".
 const STATUS_ALIASES: Record<string, ApplicationStatus> = {
-  saved: "saved",
-  bookmarked: "saved",
-  wishlist: "saved",
-  interested: "saved",
-  toapply: "saved",
-  notapplied: "saved",
+  interviewstage1: "interview_stage_1",
+  interviewstage2: "interview_stage_2",
+  interviewstage3: "interview_stage_3",
+  interviewstage4: "interview_stage_4",
+  interviewstage5: "interview_stage_5",
+  interviewfinal: "interview_final",
+  interview1: "interview_stage_1",
+  interview2: "interview_stage_2",
+  interview3: "interview_stage_3",
+  interview4: "interview_stage_4",
+  interview5: "interview_stage_5",
+  round1: "interview_stage_1",
+  round2: "interview_stage_2",
+  round3: "interview_stage_3",
+  round4: "interview_stage_4",
+  round5: "interview_stage_5",
+  stage1: "interview_stage_1",
+  stage2: "interview_stage_2",
+  stage3: "interview_stage_3",
+  stage4: "interview_stage_4",
+  stage5: "interview_stage_5",
+  finalround: "interview_final",
+  finalinterview: "interview_final",
+  superday: "interview_final",
+  onsite: "interview_final",
+  final: "interview_final",
+
+  onlineassessment: "online_assessment",
+  codingchallenge: "online_assessment",
+  assessment: "online_assessment",
+  hackerrank: "online_assessment",
+  codesignal: "online_assessment",
+  challenge: "online_assessment",
+  oa: "online_assessment",
+
+  phonescreen: "interview_stage_1",
+  screen: "interview_stage_1",
+  interviewing: "interview_stage_1",
+  interview: "interview_stage_1",
+
+  upcoming: "upcoming",
+  saved: "upcoming",
+  bookmarked: "upcoming",
+  wishlist: "upcoming",
+  interested: "upcoming",
+  toapply: "upcoming",
+  notapplied: "upcoming",
+
   applied: "applied",
   submitted: "applied",
   inprogress: "applied",
   pending: "applied",
   inreview: "applied",
   underreview: "applied",
-  oa: "online_assessment",
-  onlineassessment: "online_assessment",
-  assessment: "online_assessment",
-  codingchallenge: "online_assessment",
-  challenge: "online_assessment",
-  test: "online_assessment",
-  hackerrank: "online_assessment",
-  interview: "interview",
-  interviewing: "interview",
-  phonescreen: "interview",
-  screen: "interview",
-  onsite: "interview",
-  final: "interview",
-  finalround: "interview",
-  superday: "interview",
-  offer: "offer",
-  offered: "offer",
-  accepted: "offer",
+
+  offered: "offered",
+  offer: "offered",
+  accepted: "accepted",
+  accept: "accepted",
+
+  withdrawn: "withdrawn",
+  withdrew: "withdrawn",
+  cancelled: "withdrawn",
+
   rejected: "rejected",
   reject: "rejected",
   denied: "rejected",
   declined: "rejected",
   nooffer: "rejected",
-  ghosted: "ghosted",
-  noresponse: "ghosted",
-  noreply: "ghosted",
-  withdrawn: "withdrawn",
-  withdrew: "withdrawn",
-  cancelled: "withdrawn",
+  ghosted: "rejected",
+  noresponse: "rejected",
+  noreply: "rejected",
 };
 
 export function normalizeStatus(raw: string | undefined): ApplicationStatus | null {
@@ -140,6 +177,16 @@ export function normalizeStatus(raw: string | undefined): ApplicationStatus | nu
   // Fall back to a contains check so "Interview - Round 2" still lands.
   const hit = Object.keys(STATUS_ALIASES).find((a) => a.length > 3 && n.includes(a));
   return hit ? STATUS_ALIASES[hit] : null;
+}
+
+/** Pulls the season out of values like "Summer 2027" or "summer co-op". */
+export function normalizeTerm(raw: string | undefined): Term | null {
+  if (!raw) return null;
+  const n = norm(raw);
+  if (!n) return null;
+  const hit = TERMS.find((t) => n.includes(t));
+  if (hit) return hit;
+  return n.includes("autumn") ? "fall" : null;
 }
 
 export function normalizeWorkMode(raw: string | undefined): WorkMode | null {
@@ -216,6 +263,9 @@ export function mapRows(
       } else if (field === "workMode") {
         const mode = normalizeWorkMode(raw);
         if (mode) mapped.workMode = mode;
+      } else if (field === "term") {
+        const term = normalizeTerm(raw);
+        if (term) mapped.term = term;
       } else if (field === "appliedAt") {
         const date = normalizeDate(raw);
         if (date) mapped.appliedAt = date;

@@ -37,6 +37,19 @@ const IGNORE = "__ignore__";
 
 type Parsed = { headers: string[]; rows: Record<string, string>[] };
 
+/**
+ * API responses are usually wrapped ({ success, data: [...] }, { results: [...] }),
+ * so pasting one straight from the network tab should just work. Returns the
+ * first array-of-objects property, or the object itself as a single row.
+ */
+function unwrapEnvelope(json: unknown): unknown[] {
+  if (typeof json !== "object" || json === null) return [json];
+  const nested = Object.values(json).find(
+    (v) => Array.isArray(v) && v.length > 0 && v.every((i) => typeof i === "object" && i !== null),
+  );
+  return (nested as unknown[]) ?? [json];
+}
+
 /** Accepts a JSON array of objects as well as delimited text. */
 function parseInput(text: string): Parsed | { error: string } {
   const trimmed = text.trim();
@@ -45,7 +58,7 @@ function parseInput(text: string): Parsed | { error: string } {
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
     try {
       const json = JSON.parse(trimmed);
-      const list: unknown[] = Array.isArray(json) ? json : [json];
+      const list: unknown[] = Array.isArray(json) ? json : unwrapEnvelope(json);
       const objects = list.filter(
         (v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v),
       );
