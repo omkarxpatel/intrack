@@ -40,11 +40,18 @@ src/
 
 Two decisions worth knowing about:
 
-**Every row carries a `userId`, and every query filters on it.** Right now
-`getCurrentUserId()` in `src/lib/auth.ts` returns a constant, so the app works
-with no login. Publishing means replacing that one function with a real session
-lookup — no schema migration, no query rewrites. Retrofitting multi-tenancy
-later is the expensive version of this.
+**Every row carries a `userId`, and every query filters on it.** Auth is Clerk,
+and the entire gate is `getCurrentUserId()` in `src/lib/auth.ts`: it returns the
+session's user id or redirects to `/sign-in`. Because all 20 data paths already
+funnel through it, adding real multi-tenancy needed no schema migration and no
+query rewrites.
+
+The gate lives there rather than in middleware on purpose — Clerk deprecated
+`createRouteMatcher` because a path list can drift from how Next.js routes
+requests and leave a resource reachable. `src/middleware.ts` only runs
+`clerkMiddleware()` to populate the session. The one route that fetches nothing,
+`/import`, calls `getCurrentUserId()` directly so its UI isn't served to
+strangers.
 
 **`status_events` records the path, and the path is editable.** Every status
 change is written there as well as onto `applications.status`, so each row shows
@@ -96,8 +103,15 @@ fine, but scripted access can trip rate limits or account flags.
 
 ## Deploying
 
-Linked to the Vercel project `intrack` with Neon attached, so `vercel deploy`
-works. Run `npm run db:migrate` against production before the first deploy.
+Linked to the Vercel project `intrack` with Neon and Clerk attached, so
+`vercel deploy` works. Run `npm run db:migrate` against production before the
+first deploy.
 
-Before making this public, add auth (see `src/lib/auth.ts`) — until then every
-visitor shares the same `local-user` row set.
+Rows created before auth landed carry `userId = "local-user"` and no session
+will ever match them. `npm run db:adopt -- <clerk-user-id>` moves them onto a
+real account; it's a one-off.
+
+The Clerk keys provisioned by the Marketplace are `pk_test`/`sk_test`, i.e. a
+development instance. A Clerk *production* instance needs a domain you control
+for its Frontend API CNAME, which a `*.vercel.app` host can't provide — so
+running this for real users means owning a domain first.

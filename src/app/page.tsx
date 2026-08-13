@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 import { ChartNoAxesColumn, Upload } from "lucide-react";
 import { getStatusPaths, listApplications, listRolePresets } from "@/lib/queries";
 import {
@@ -49,7 +50,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <h1 className="text-2xl font-semibold tracking-tight">Intrack</h1>
           <p className="text-sm text-muted-foreground">Internship application tracker</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button variant="outline" asChild>
             <Link href="/insights">
@@ -61,6 +62,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               <Upload className="size-4" /> Import
             </Link>
           </Button>
+          <UserButton />
         </div>
       </header>
 

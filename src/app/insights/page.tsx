@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
 import { getInsights } from "@/lib/insights";
 import { InsightsBoard } from "@/components/insights/insights-board";
@@ -30,11 +31,14 @@ export default async function InsightsPage() {
               : `Across ${totalApplications} tracked ${totalApplications === 1 ? "application" : "applications"}`}
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/">
-            <ArrowLeft className="size-4" /> Applications
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/">
+              <ArrowLeft className="size-4" /> Applications
+            </Link>
+          </Button>
+          <UserButton />
+        </div>
       </header>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
