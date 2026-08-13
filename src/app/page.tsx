@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ChartNoAxesColumn, Table2, Upload } from "lucide-react";
 import { neonAuth } from "@/lib/neon-auth";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +34,24 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6">
+      {/* Tells Google this is a free web app rather than an article, which is
+          what earns the richer result rather than a bare blue link. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: SITE_NAME,
+            description: SITE_DESCRIPTION,
+            url: SITE_URL,
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+          }),
+        }}
+      />
+
       <header className="flex items-center justify-between">
         <span className="text-sm font-semibold tracking-tight">Intrack</span>
         <ThemeToggle />

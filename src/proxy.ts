@@ -22,5 +22,7 @@ export default neonAuth.middleware({ loginUrl: "/auth/sign-in" });
  * default — a new route is protected unless it's deliberately excluded here.
  */
 export const config = {
-  matcher: ["/((?!privacy|terms|_next/static|_next/image|icon.svg).+)"],
+  matcher: [
+    "/((?!privacy|terms|robots.txt|sitemap.xml|opengraph-image|_next/static|_next/image|icon.svg).+)",
+  ],
 };
