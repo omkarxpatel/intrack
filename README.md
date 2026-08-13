@@ -40,18 +40,23 @@ src/
 
 Two decisions worth knowing about:
 
-**Every row carries a `userId`, and every query filters on it.** Auth is Clerk,
-and the entire gate is `getCurrentUserId()` in `src/lib/auth.ts`: it returns the
-session's user id or redirects to `/sign-in`. Because all 20 data paths already
-funnel through it, adding real multi-tenancy needed no schema migration and no
-query rewrites.
+**Every row carries a `userId`, and every query filters on it.** Auth is Neon
+Auth (managed Better Auth), and the entire gate is `getCurrentUserId()` in
+`src/lib/auth.ts`: it returns the session's user id or redirects to
+`/auth/sign-in`. Because all 20 data paths already funnel through it, adding
+real multi-tenancy needed no schema migration and no query rewrites — and later
+swapping the auth provider outright touched one file.
 
-The gate lives there rather than in middleware on purpose — Clerk deprecated
-`createRouteMatcher` because a path list can drift from how Next.js routes
-requests and leave a resource reachable. `src/middleware.ts` only runs
-`clerkMiddleware()` to populate the session. The one route that fetches nothing,
-`/import`, calls `getCurrentUserId()` directly so its UI isn't served to
-strangers.
+The gate is resource-level rather than a middleware path list, which can drift
+from how Next.js routes requests and leave a resource reachable. There is no
+middleware at all. The one route that fetches nothing, `/import`, calls
+`getCurrentUserId()` directly so its UI isn't served to strangers.
+
+Users live in the `neon_auth` schema of the same database, so `applications.userId`
+and the user table are one `join` apart. Sign-in, sign-up, password reset, and
+the account view are Neon's prebuilt `AuthView` components, which inherit the
+app's shadcn tokens — `src/components/auth-provider.tsx` documents why it uses
+the raw `AuthUIProvider` instead of Neon's wrapper.
 
 **`status_events` records the path, and the path is editable.** Every status
 change is written there as well as onto `applications.status`, so each row shows
@@ -103,15 +108,18 @@ fine, but scripted access can trip rate limits or account flags.
 
 ## Deploying
 
-Linked to the Vercel project `intrack` with Neon and Clerk attached, so
-`vercel deploy` works. Run `npm run db:migrate` against production before the
-first deploy.
+Linked to the Vercel project `intrack` with Neon attached, so `vercel deploy`
+works. Run `npm run db:migrate` against production before the first deploy.
 
-Rows created before auth landed carry `userId = "local-user"` and no session
-will ever match them. `npm run db:adopt -- <clerk-user-id>` moves them onto a
-real account; it's a one-off.
+Beyond `DATABASE_URL`, auth needs `NEON_AUTH_BASE_URL` (from the Neon dashboard)
+and `NEON_AUTH_COOKIE_SECRET` (32+ chars, `openssl rand -base64 32`) in all
+environments.
 
-The Clerk keys provisioned by the Marketplace are `pk_test`/`sk_test`, i.e. a
-development instance. A Clerk *production* instance needs a domain you control
-for its Frontend API CNAME, which a `*.vercel.app` host can't provide — so
-running this for real users means owning a domain first.
+After deploying, add the deployment's URL to **trusted domains** in Neon's
+Managed Better Auth settings. Local development works without it
+(`allow_localhost` is on), but the Google sign-in callback needs the production
+origin whitelisted.
+
+If ids ever change hands — rows predating auth are stamped `local-user`, and
+swapping auth provider reissues every id — `npm run db:move-rows -- <from> <to>`
+moves applications, status events, and role presets together.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@neondatabase/auth/react/ui";
 import { ChartNoAxesColumn, Upload } from "lucide-react";
 import { getStatusPaths, listApplications, listRolePresets } from "@/lib/queries";
 import {

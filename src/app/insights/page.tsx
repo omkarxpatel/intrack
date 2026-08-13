@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@neondatabase/auth/react/ui";
 import { ArrowLeft } from "lucide-react";
 import { getInsights } from "@/lib/insights";
 import { InsightsBoard } from "@/components/insights/insights-board";

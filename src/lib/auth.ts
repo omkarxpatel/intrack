@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { neonAuth } from "@/lib/neon-auth";
 
 /**
  * Single seam for identity *and* the app's auth gate: every query and action
@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
  * serving one user another user's applications.
  */
 export async function getCurrentUserId(): Promise<string> {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-  return userId;
+  const { data: session } = await neonAuth.getSession();
+  if (!session?.user) redirect("/auth/sign-in");
+  return session.user.id;
 }

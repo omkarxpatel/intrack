@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
+import { AuthProvider } from "@/components/auth-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -22,17 +23,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    // signInUrl/signUpUrl keep Clerk pointed at the pages in this app rather
-    // than its hosted account portal, in every environment, with no extra env
-    // vars to keep in sync between local and production.
-    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
-      <html
-        lang="en"
-        suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col">
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AuthProvider>
             {children}
             {/* main carries flex-1, so this stays pinned to the bottom on short pages. */}
             <footer className="border-t py-4 text-center text-xs text-muted-foreground">
@@ -40,9 +38,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <span className="font-medium text-foreground">@anomier</span> on Discord.
             </footer>
             <Toaster richColors position="top-center" />
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+          </AuthProvider>
+        </ThemeProvider>
+        <Analytics />
+      </body>
+    </html>
   );
 }

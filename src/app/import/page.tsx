@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Import — Intrack" };
 
+// getSession() reads cookies, which only exist at request time.
+export const dynamic = "force-dynamic";
+
 export default async function ImportPage() {
   // This page fetches nothing, so it's the one route where no data access would
   // otherwise reach the auth gate. Call it directly so the importer UI isn't
