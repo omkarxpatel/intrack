@@ -231,6 +231,33 @@ export async function setStatus(rawId: string, rawStatus: string): Promise<Actio
   return { ok: true, data: null };
 }
 
+const setStarredSchema = z.object({ id: z.uuid(), starred: z.boolean() });
+
+/**
+ * Starring deliberately leaves `updatedAt` alone. It isn't the application
+ * moving, it's you changing your mind about it — bumping the timestamp would
+ * rewrite the row's "Last update" cell and float it to the top of the
+ * "Recently updated" sort for a reason that has nothing to do with progress.
+ */
+export async function setStarred(rawId: string, starred: boolean): Promise<ActionResult> {
+  const parsed = setStarredSchema.safeParse({ id: rawId, starred });
+  if (!parsed.success) return invalid(parsed.error);
+
+  const db = getDb();
+  const userId = await getCurrentUserId();
+
+  const updated = await db
+    .update(applications)
+    .set({ starred: parsed.data.starred })
+    .where(and(eq(applications.id, parsed.data.id), eq(applications.userId, userId)))
+    .returning({ id: applications.id });
+
+  if (updated.length === 0) return { ok: false, error: "Application not found" };
+
+  revalidatePath("/");
+  return { ok: true, data: null };
+}
+
 /**
  * The path is the source of truth: after any edit, the application's current
  * status becomes whatever the latest step says. Without this the badge and the

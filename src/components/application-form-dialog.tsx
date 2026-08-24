@@ -14,6 +14,7 @@ import {
 import type { Application } from "@/db/schema";
 import { RoleCombobox } from "@/components/role-combobox";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -46,7 +47,13 @@ type FormValues = Record<
   | "source"
   | "notes",
   string
->;
+> & {
+  // Booleans rather than "true"/"false" strings: the whole object goes to a
+  // server action, so it can carry real types instead of stringifying them and
+  // making the Zod schema coerce them back.
+  starred: boolean;
+  hasReferral: boolean;
+};
 
 // Radix Select can't hold an empty string as a value, so "no term" needs a sentinel.
 const NO_TERM = "__none__";
@@ -66,9 +73,11 @@ const emptyValues = (): FormValues => ({
   workMode: "unknown",
   term: "",
   status: "applied",
+  starred: false,
   appliedAt: todayIso(),
   salary: "",
   source: "",
+  hasReferral: false,
   notes: "",
 });
 
@@ -80,9 +89,11 @@ function toFormValues(a: Application): FormValues {
     workMode: a.workMode,
     term: a.term ?? "",
     status: a.status,
+    starred: a.starred,
     appliedAt: a.appliedAt ?? "",
     salary: a.salary ?? "",
     source: a.source ?? "",
+    hasReferral: a.hasReferral,
     notes: a.notes ?? "",
   };
 }
@@ -118,7 +129,7 @@ export function ApplicationFormDialog({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [pending, startTransition] = useTransition();
 
-  const set = <K extends keyof FormValues>(key: K, value: string) =>
+  const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
 
   function onOpenChange(next: boolean) {
@@ -275,6 +286,21 @@ export function ApplicationFormDialog({
               />
             </Field>
 
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 sm:col-span-2">
+              <CheckboxField
+                id={`${formId}-starred`}
+                label="Starred"
+                checked={values.starred}
+                onChange={(v) => set("starred", v)}
+              />
+              <CheckboxField
+                id={`${formId}-hasReferral`}
+                label="I have a referral"
+                checked={values.hasReferral}
+                onChange={(v) => set("hasReferral", v)}
+              />
+            </div>
+
             <Field
               id={`${formId}-notes`}
               label="Notes"
@@ -302,6 +328,26 @@ export function ApplicationFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CheckboxField({
+  id,
+  label,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {/* Radix reports "indeterminate" as a third state; this form never sets it. */}
+      <Checkbox id={id} checked={checked} onCheckedChange={(next) => onChange(next === true)} />
+      <Label htmlFor={id}>{label}</Label>
+    </div>
   );
 }
 

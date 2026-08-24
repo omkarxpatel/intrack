@@ -36,9 +36,11 @@ export const applicationInputSchema = z.object({
   workMode: z.enum(WORK_MODES).default("unknown"),
   term: z.preprocess(emptyToNull, z.enum(TERMS).nullable().default(null)),
   status: z.enum(APPLICATION_STATUSES).default("upcoming"),
+  starred: z.boolean().default(false),
   appliedAt: optionalIsoDate,
   salary: optionalText(100),
   source: optionalText(200),
+  hasReferral: z.boolean().default(false),
   notes: optionalText(10_000),
   externalId: optionalText(200),
 });

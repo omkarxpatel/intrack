@@ -2,8 +2,18 @@
 
 import { Fragment, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ChevronRight, ExternalLink, History, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { deleteApplication, setStatus } from "@/lib/actions";
+import {
+  ChevronRight,
+  ExternalLink,
+  History,
+  MoreHorizontal,
+  Pencil,
+  Star,
+  StickyNote,
+  Trash2,
+  UserRoundCheck,
+} from "lucide-react";
+import { deleteApplication, setStarred, setStatus } from "@/lib/actions";
 import {
   APPLICATION_STATUSES,
   CLOSED_STATUSES,
@@ -13,10 +23,16 @@ import {
   type StatusStep,
 } from "@/lib/constants";
 import type { Application } from "@/db/schema";
+import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { ApplicationFormDialog } from "@/components/application-form-dialog";
 import { StatusPathDialog } from "@/components/status-path-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,16 +67,25 @@ export function ApplicationsTable({
   // before repainting the chip costs a few hundred ms of dead time on the most
   // frequent action in the app. Paint immediately; React reverts automatically
   // if the action fails.
-  const [rows, applyOptimisticStatus] = useOptimistic(
+  const [rows, applyOptimistic] = useOptimistic(
     applications,
-    (current, { id, status }: { id: string; status: ApplicationStatus }) =>
-      current.map((a) => (a.id === id ? { ...a, status } : a)),
+    (current, { id, patch }: { id: string; patch: Partial<Application> }) =>
+      current.map((a) => (a.id === id ? { ...a, ...patch } : a)),
   );
 
   function onStatusChange(id: string, status: string) {
     startTransition(async () => {
-      applyOptimisticStatus({ id, status: status as ApplicationStatus });
+      applyOptimistic({ id, patch: { status: status as ApplicationStatus } });
       const result = await setStatus(id, status);
+      if (!result.ok) toast.error(result.error);
+    });
+  }
+
+  function onStarToggle(app: Application) {
+    const starred = !app.starred;
+    startTransition(async () => {
+      applyOptimistic({ id: app.id, patch: { starred } });
+      const result = await setStarred(app.id, starred);
       if (!result.ok) toast.error(result.error);
     });
   }
@@ -92,6 +117,7 @@ export function ApplicationsTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-8" />
             <TableHead>Company</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
@@ -107,6 +133,21 @@ export function ApplicationsTable({
               key={app.id}
               className={CLOSED_STATUSES.includes(app.status) ? "opacity-60" : undefined}
             >
+              <TableCell className="pr-0">
+                <button
+                  type="button"
+                  onClick={() => onStarToggle(app)}
+                  aria-pressed={app.starred}
+                  aria-label={`${app.starred ? "Unstar" : "Star"} ${app.company} — ${app.role}`}
+                  // Negative margin cancels the padding, so the hit area is
+                  // comfortable without widening the column.
+                  className="-m-1.5 flex items-center p-1.5 text-muted-foreground/40 transition-colors hover:text-foreground"
+                >
+                  <Star
+                    className={cn("size-4", app.starred && "fill-foreground text-foreground")}
+                  />
+                </button>
+              </TableCell>
               <TableCell className="font-medium">
                 {app.jobUrl ? (
                   <a
@@ -122,8 +163,20 @@ export function ApplicationsTable({
                   app.company
                 )}
               </TableCell>
-              <TableCell className="max-w-64 truncate" title={app.role}>
-                {app.role}
+              <TableCell className="max-w-64">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate" title={app.role}>
+                    {app.role}
+                  </span>
+                  {/* Full contrast for the referral, muted for notes: a referral
+                      changes your odds, a note is just there if you want it. */}
+                  {app.hasReferral && (
+                    <span title="You have a referral" className="shrink-0 text-foreground">
+                      <UserRoundCheck className="size-3.5" />
+                    </span>
+                  )}
+                  {app.notes && <NotesPreview notes={app.notes} company={app.company} />}
+                </div>
               </TableCell>
               <TableCell>
                 <Select value={app.status} onValueChange={(v) => onStatusChange(app.id, v)}>
@@ -253,6 +306,36 @@ function RowActions({
         <StatusPathDialog app={app} steps={steps} open onOpenChange={setHistoryOpen} />
       )}
     </>
+  );
+}
+
+/**
+ * The note itself on hover, rather than the native `title` tooltip: that waits
+ * about a second to appear, collapses the note's own line breaks, and renders
+ * outside the theme.
+ *
+ * Clamped by line count rather than character count so the cut always lands on
+ * a line boundary instead of mid-word. A button, not a span, so it's reachable
+ * by keyboard — Radix opens the card on focus as well as hover.
+ */
+function NotesPreview({ notes, company }: { notes: string; company: string }) {
+  return (
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Notes for ${company}`}
+          className="flex shrink-0 items-center text-muted-foreground/70 transition-colors hover:text-foreground"
+        >
+          <StickyNote className="size-3.5" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-80">
+        <p className="line-clamp-12 text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
+          {notes.trim()}
+        </p>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 

@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   date,
   index,
   pgEnum,
@@ -32,9 +33,17 @@ export const applications = pgTable(
     workMode: workMode("work_mode").notNull().default("unknown"),
     term: termSeason("term"),
     status: applicationStatus("status").notNull().default("upcoming"),
+    // A personal flag rather than pipeline state: the ones you actually want.
+    // Deliberately does not affect sort order or filtering — it marks a row,
+    // it doesn't reorder the table out from under you.
+    starred: boolean("starred").notNull().default(false),
     appliedAt: date("applied_at"),
     salary: text("salary"),
     source: text("source"),
+    // Separate from `source` on purpose: source is free text ("LinkedIn",
+    // "career fair") and can't be filtered or counted, while whether someone
+    // referred you is a yes/no worth reading off a row at a glance.
+    hasReferral: boolean("has_referral").notNull().default(false),
     notes: text("notes"),
 
     // Stable id from whatever system a row was imported from. NULL for rows
