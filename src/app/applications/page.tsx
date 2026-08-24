@@ -4,6 +4,7 @@ import { ChartNoAxesColumn, Upload } from "lucide-react";
 import { getStatusPaths, listApplications, listRolePresets } from "@/lib/queries";
 import {
   APPLICATION_STATUSES,
+  IN_PROCESS_FILTER,
   TERMS,
   type ApplicationStatus,
   type Term,
@@ -12,7 +13,10 @@ import { ApplicationsView } from "@/components/applications-view";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
-function parseStatus(value: string | undefined): ApplicationStatus | undefined {
+function parseStatus(
+  value: string | undefined,
+): ApplicationStatus | typeof IN_PROCESS_FILTER | undefined {
+  if (value === IN_PROCESS_FILTER) return value;
   return APPLICATION_STATUSES.includes(value as ApplicationStatus)
     ? (value as ApplicationStatus)
     : undefined;

@@ -105,6 +105,14 @@ export const IN_PROCESS_STATUSES: ApplicationStatus[] = [
   "interview_final",
 ];
 
+/**
+ * A status *filter* value standing for the whole IN_PROCESS_STATUSES set,
+ * which no single status can express. Deliberately not a member of
+ * APPLICATION_STATUSES: it never reaches the database, it only ever appears in
+ * the URL, so it can't collide with a real status.
+ */
+export const IN_PROCESS_FILTER = "in_process";
+
 /** One hop in an application's status path. Ordered by `at`, and user-editable. */
 export type StatusStep = {
   id: string;

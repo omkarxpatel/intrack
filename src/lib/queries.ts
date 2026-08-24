@@ -1,12 +1,16 @@
 import "server-only";
-import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import { applications, rolePresets, statusEvents, type Application } from "@/db/schema";
 import { getCurrentUserId } from "@/lib/auth";
-import type { StatusStep } from "@/lib/constants";
+import {
+  IN_PROCESS_FILTER,
+  IN_PROCESS_STATUSES,
+  type StatusStep,
+} from "@/lib/constants";
 
 export type ApplicationFilters = {
-  status?: Application["status"];
+  status?: Application["status"] | typeof IN_PROCESS_FILTER;
   term?: Application["term"] & {};
   sort?: "updated" | "applied" | "company";
 };
@@ -16,7 +20,13 @@ export async function listApplications(filters: ApplicationFilters = {}) {
   const userId = await getCurrentUserId();
 
   const conditions: SQL[] = [eq(applications.userId, userId)];
-  if (filters.status) conditions.push(eq(applications.status, filters.status));
+  // The one filter value that isn't itself a status: it stands for the whole
+  // active middle of the pipeline, so it matches a set rather than a value.
+  if (filters.status === IN_PROCESS_FILTER) {
+    conditions.push(inArray(applications.status, IN_PROCESS_STATUSES));
+  } else if (filters.status) {
+    conditions.push(eq(applications.status, filters.status));
+  }
   if (filters.term) conditions.push(eq(applications.term, filters.term));
 
   const orderBy = {

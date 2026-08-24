@@ -3,7 +3,13 @@
 import { useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Plus, Search } from "lucide-react";
-import { APPLICATION_STATUSES, STATUS_LABELS, TERMS, TERM_LABELS } from "@/lib/constants";
+import {
+  APPLICATION_STATUSES,
+  IN_PROCESS_FILTER,
+  STATUS_LABELS,
+  TERMS,
+  TERM_LABELS,
+} from "@/lib/constants";
 import { ApplicationFormDialog } from "@/components/application-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +17,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -68,7 +75,11 @@ export function ApplicationsToolbar({
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
+          {/* The two set-valued options sit above the rule; everything below
+              it picks out exactly one status. */}
           <SelectItem value={ALL}>All statuses</SelectItem>
+          <SelectItem value={IN_PROCESS_FILTER}>In process</SelectItem>
+          <SelectSeparator />
           {APPLICATION_STATUSES.map((s) => (
             <SelectItem key={s} value={s}>
               {STATUS_LABELS[s]}
